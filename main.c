@@ -7,8 +7,8 @@
 bool init(AppContext* ctx)
 {
     setup_init(ctx);
-    //if (!init_gui(ctx)|| !init_audio(ctx))
-    if (!init_gui(ctx))
+    if (!init_gui(ctx)|| !init_audio(ctx))
+    //if (!init_gui(ctx))
     {
         return false;
     }

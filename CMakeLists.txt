@@ -15,7 +15,9 @@ add_executable(Synth1 main.c
         input.c
         setup.h
         setup.c
-        gui.c)
+        gui.c
+        audio.c
+)
 # איפה לחפש קבצי .h
 target_include_directories(Synth1 PRIVATE
         ${SDL2_PATH}/include/SDL2

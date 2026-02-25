@@ -7,7 +7,7 @@
 
 #include "common.h"
 bool init_audio(AppContext* ctx);
-bool destroy_audio(AppContext* ctx);
+void destroy_audio(AppContext* ctx);
 
 #endif //SYNTH1_AUDIO_H
 

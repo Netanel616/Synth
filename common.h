@@ -9,18 +9,27 @@
 #define NUM_NOTES 12
 #define NUM_VOICES 10
 #define BASE_FREQUENCY 44100
+#define BUFFER_SIZE 2048
 #define BASE_NOTE 60
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 #define FONT_SIZE 24
 #define FONT_PATH "/System/Library/Fonts/Supplemental/Arial.ttf"
+typedef enum {
+    OFF,
+    ATTACK,
+    SUSTAIN, // כרגע נשתמש בזה כשהמקש לחוץ
+    RELEASE
+} EnvelopeState;
 
 typedef struct {
     float frequency;
     float amplitude;
     int midiNote;
     bool isActive;
-    SDL_Scancode ownerKey; // המקש שתפס את הקול הזה
+    SDL_Scancode ownerKey;
+    double phase;
+    EnvelopeState state;
 } Voice;
 
 typedef struct {
@@ -37,12 +46,14 @@ typedef struct {
     SDL_Window* window;
     SDL_Renderer* renderer;
     SDL_Event event;
+    SDL_AudioDeviceID audioDevice;
 
     Note notes[NUM_NOTES];
     Voice voices[NUM_VOICES];
 
     int octaveOffset;   //0, 1, -1, ...
     float masterVolume; // 0.0 to 1.0
+
 } AppContext;
 
 #endif

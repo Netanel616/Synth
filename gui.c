@@ -60,7 +60,7 @@ void destroy_notes(AppContext* ctx)
 
 bool init_gui(AppContext* ctx)
 {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0 || TTF_Init() == -1) {
+    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0 || TTF_Init() == -1) {
         printf("Initialization Error: %s\n", SDL_GetError());
         return false;
     }
