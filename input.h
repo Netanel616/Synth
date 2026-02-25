@@ -10,4 +10,3 @@
 void handle_input(AppContext* ctx);
 
 #endif //SYNTH1_INPUT_H
-

@@ -2,6 +2,7 @@
 // Created by Netanel Seri on 24/02/2026.
 //
 #include "common.h"
+#include "audio.h"
 
 #define SINE_TABLE_SIZE 2048
 float sine_lookup_table[SINE_TABLE_SIZE];
@@ -49,7 +50,7 @@ float get_sample(WaveformType type, double phase) {
 }
 
 void audio_callback(void* userdata, Uint8* stream, int len) {
-    AppContext* ctx = (AppContext*)userdata;
+    AudioContext* ctx = (AudioContext*)userdata;
     float* f_stream = (float*)stream;
     int sample_count = len / sizeof(float);
 
@@ -82,7 +83,7 @@ void audio_callback(void* userdata, Uint8* stream, int len) {
             }
 
             // Get sample from the selected waveform
-            float sample = get_sample(ctx->waveform, ctx->voices[v].phase);
+            float sample = get_sample(ctx->state->waveform, ctx->voices[v].phase);
 
             // 0.15f is the Master Gain to prevent clipping
             f_stream[i] += sample * ctx->voices[v].amplitude * 0.15f;
@@ -93,7 +94,7 @@ void audio_callback(void* userdata, Uint8* stream, int len) {
     }
 }
 
-void audio_note_on(AppContext* ctx, int midiNoteNumber, SDL_Scancode sc) {
+void audio_note_on(AudioContext* ctx, int midiNoteNumber, SDL_Scancode sc) {
     int stealCandidate = -1;
     float minAmplitude = 1.1f;
 
@@ -116,7 +117,7 @@ void audio_note_on(AppContext* ctx, int midiNoteNumber, SDL_Scancode sc) {
         Voice* v = &ctx->voices[stealCandidate];
 
         // Lock audio to prevent sound glitches during modification
-        SDL_LockAudioDevice(ctx->audioDevice);
+        SDL_LockAudioDevice(ctx->deviceId);
 
         // Standard MIDI to Frequency formula: f = 440 * 2^((d-69)/12)
         v->frequency = A4_FREQUENCY * pow(2.0, (double)(midiNoteNumber - A4_MIDI_NUMBER) / 12.0);
@@ -130,13 +131,13 @@ void audio_note_on(AppContext* ctx, int midiNoteNumber, SDL_Scancode sc) {
         // or reset if it was OFF.
         if (v->state == OFF) v->amplitude = 0.0f;
 
-        SDL_UnlockAudioDevice(ctx->audioDevice);
+        SDL_UnlockAudioDevice(ctx->deviceId);
     }
 }
 
-void audio_note_off(AppContext* ctx, SDL_Scancode sc) {
+void audio_note_off(AudioContext* ctx, SDL_Scancode sc) {
     // Lock to ensure atomicity against the Audio Thread
-    SDL_LockAudioDevice(ctx->audioDevice);
+    SDL_LockAudioDevice(ctx->deviceId);
 
     for (int i = 0; i < NUM_VOICES; i++) {
         // Find a voice belonging to this key that is not already releasing
@@ -145,12 +146,14 @@ void audio_note_off(AppContext* ctx, SDL_Scancode sc) {
         }
     }
 
-    SDL_UnlockAudioDevice(ctx->audioDevice);
+    SDL_UnlockAudioDevice(ctx->deviceId);
 }
 
-bool init_audio(AppContext* ctx)
+bool init_audio(AudioContext* ctx, SharedState* state)
 {
     init_sine_table();
+    ctx->state = state; // Store pointer to shared state
+
     SDL_AudioSpec desired;
 
     // Zero out the structure (mandatory in C)
@@ -165,19 +168,19 @@ bool init_audio(AppContext* ctx)
     desired.userdata = ctx;
 
     // Open device
-    ctx->audioDevice = SDL_OpenAudioDevice(NULL, 0, &desired, NULL, 0);
+    ctx->deviceId = SDL_OpenAudioDevice(NULL, 0, &desired, NULL, 0);
 
-    if (ctx->audioDevice == 0) {
+    if (ctx->deviceId == 0) {
         printf("SDL_OpenAudioDevice Error: %s\n", SDL_GetError());
         return false;
     }
 
     // Start stream
-    SDL_PauseAudioDevice(ctx->audioDevice, 0);
+    SDL_PauseAudioDevice(ctx->deviceId, 0);
     return true;
 }
 
-void destroy_audio(AppContext* ctx)
+void destroy_audio(AudioContext* ctx)
 {
-    SDL_CloseAudioDevice(ctx->audioDevice);
+    SDL_CloseAudioDevice(ctx->deviceId);
 }

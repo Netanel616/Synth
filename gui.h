@@ -7,8 +7,8 @@
 #define SYNTH1_GUI_H
 #include "common.h"
 
-bool init_gui(AppContext* ctx);
-void render_frame(AppContext* ctx);
-bool destroy_gui(AppContext* ctx);
+bool init_gui(GuiContext* ctx, SharedState* state);
+void render_frame(GuiContext* ctx, SharedState* state);
+void destroy_gui(GuiContext* ctx);
 
 #endif //SYNTH1_GUI_H

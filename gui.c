@@ -2,12 +2,39 @@
 // Created by Netanel Seri on 24/02/2026.
 //
 #include "common.h"
+#include "gui.h"
 #include <stdio.h>
 
 #define WHITE_COLOR 255, 255, 255, 255
 #define RED_COLOR 255, 0, 0, 255
 #define BLACK_COLOR 0, 0, 0, 255
 #define BLUE_COLOR 0, 0, 255, 255
+
+// Keyboard Layout Constants
+#define KEYBOARD_START_X 50
+#define KEYBOARD_START_Y 300
+#define WHITE_KEY_WIDTH 40
+#define WHITE_KEY_HEIGHT 200
+#define BLACK_KEY_WIDTH 25
+#define BLACK_KEY_HEIGHT 120
+
+// Ordered by note
+static SDL_Scancode pianoKeys[] = {
+    // Octave -1 (C3)
+    SDL_SCANCODE_Z, SDL_SCANCODE_S, SDL_SCANCODE_X, SDL_SCANCODE_D,
+    SDL_SCANCODE_C, SDL_SCANCODE_V, SDL_SCANCODE_G, SDL_SCANCODE_B,
+    SDL_SCANCODE_H, SDL_SCANCODE_N, SDL_SCANCODE_J, SDL_SCANCODE_M,
+    // Octave 0 (C4)
+    SDL_SCANCODE_Q, SDL_SCANCODE_2, SDL_SCANCODE_W, SDL_SCANCODE_3,
+    SDL_SCANCODE_E, SDL_SCANCODE_R, SDL_SCANCODE_5, SDL_SCANCODE_T,
+    SDL_SCANCODE_6, SDL_SCANCODE_Y, SDL_SCANCODE_7, SDL_SCANCODE_U,
+    // Octave 1 (C5)
+    SDL_SCANCODE_I, SDL_SCANCODE_9, SDL_SCANCODE_O, SDL_SCANCODE_0,
+    SDL_SCANCODE_P, SDL_SCANCODE_LEFTBRACKET, SDL_SCANCODE_EQUALS, SDL_SCANCODE_RIGHTBRACKET,
+    SDL_SCANCODE_BACKSLASH, SDL_SCANCODE_UNKNOWN, SDL_SCANCODE_UNKNOWN, SDL_SCANCODE_UNKNOWN
+};
+
+static const char* noteNames[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 
 // Global font variable to avoid opening/closing every frame
 static TTF_Font* globalFont = NULL;
@@ -34,13 +61,46 @@ SDL_Texture* create_text_texture(SDL_Renderer* renderer, TTF_Font* font, const c
     return texture;
 }
 
-bool setup_notes(AppContext* ctx, SDL_Renderer* renderer)
+bool setup_notes(GuiContext* ctx, SDL_Renderer* renderer)
 {
     if (!globalFont) {
         globalFont = TTF_OpenFont(FONT_PATH, FONT_SIZE);
         if (!globalFont) {
             printf("Font Error: %s\n", TTF_GetError());
             return false;
+        }
+    }
+
+    int whiteKeyCount = 0;
+    for (int i = 0; i < NUM_NOTES; i++) {
+        int noteInOctave = i % 12;
+        ctx->notes[i].name = noteNames[noteInOctave];
+        ctx->notes[i].key = pianoKeys[i];
+        ctx->notes[i].isVisualPressed = false;
+
+        // Determine if the key is black or white
+        // Indices: 1(C#), 3(D#), 6(F#), 8(G#), 10(A#) are black keys
+        bool isBlack = (noteInOctave == 1 || noteInOctave == 3 || noteInOctave == 6 || noteInOctave == 8 || noteInOctave == 10);
+        ctx->notes[i].isBlack = isBlack;
+
+        if (!isBlack) {
+            // White Key Configuration
+            ctx->notes[i].rect.w = WHITE_KEY_WIDTH;
+            ctx->notes[i].rect.h = WHITE_KEY_HEIGHT;
+            ctx->notes[i].rect.x = KEYBOARD_START_X + (whiteKeyCount * WHITE_KEY_WIDTH);
+            ctx->notes[i].rect.y = KEYBOARD_START_Y;
+
+            whiteKeyCount++;
+        } else {
+            // Black Key Configuration
+            // Placed centered on the line between the previous white key and the next one.
+            // Since 'whiteKeyCount' has already been incremented for the previous white key,
+            // it currently represents the index of the *next* white key.
+            // So we position it at the start of the next white key, shifted left by half the black key width.
+            ctx->notes[i].rect.w = BLACK_KEY_WIDTH;
+            ctx->notes[i].rect.h = BLACK_KEY_HEIGHT;
+            ctx->notes[i].rect.x = KEYBOARD_START_X + (whiteKeyCount * WHITE_KEY_WIDTH) - (BLACK_KEY_WIDTH / 2);
+            ctx->notes[i].rect.y = KEYBOARD_START_Y;
         }
     }
 
@@ -57,7 +117,7 @@ bool setup_notes(AppContext* ctx, SDL_Renderer* renderer)
     return true;
 }
 
-void destroy_notes(AppContext* ctx)
+void destroy_notes(GuiContext* ctx)
 {
     for (int i = 0; i < NUM_NOTES; i++)
     {
@@ -65,7 +125,7 @@ void destroy_notes(AppContext* ctx)
     }
 }
 
-bool init_gui(AppContext* ctx)
+bool init_gui(GuiContext* ctx, SharedState* state)
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0 || TTF_Init() == -1) {
         printf("Initialization Error: %s\n", SDL_GetError());
@@ -81,60 +141,62 @@ bool init_gui(AppContext* ctx)
     return true;
 }
 
-void draw_white(AppContext* ctx)
+void draw_white(GuiContext* ctx)
 {
-    int whiteIndex[] = {0, 2, 4, 5, 7, 9, 11};
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < NUM_NOTES; i++)
     {
-        if (ctx->notes[whiteIndex[i]].isVisualPressed)
+        if (ctx->notes[i].isBlack) continue;
+
+        if (ctx->notes[i].isVisualPressed)
         {
             SDL_SetRenderDrawColor(ctx->renderer, RED_COLOR);
         } else
         {
             SDL_SetRenderDrawColor(ctx->renderer, WHITE_COLOR);
         }
-        SDL_RenderFillRect(ctx->renderer, &ctx->notes[whiteIndex[i]].rect);
+        SDL_RenderFillRect(ctx->renderer, &ctx->notes[i].rect);
         SDL_SetRenderDrawColor(ctx->renderer, BLACK_COLOR);
-        SDL_RenderDrawRect(ctx->renderer, &ctx->notes[whiteIndex[i]].rect);
+        SDL_RenderDrawRect(ctx->renderer, &ctx->notes[i].rect);
 
-        if (ctx->notes[whiteIndex[i]].text != NULL) {
+        if (ctx->notes[i].text != NULL) {
             SDL_Rect destRect;
-            destRect.w = ctx->notes[whiteIndex[i]].lableWidth;
-            destRect.h = ctx->notes[whiteIndex[i]].lableHeight;
+            destRect.w = ctx->notes[i].lableWidth;
+            destRect.h = ctx->notes[i].lableHeight;
 
-            destRect.x = ctx->notes[whiteIndex[i]].rect.x + (ctx->notes[whiteIndex[i]].rect.w - destRect.w) / 2;
-            destRect.y = ctx->notes[whiteIndex[i]].rect.y + ctx->notes[whiteIndex[i]].rect.h - destRect.h - 20;
+            destRect.x = ctx->notes[i].rect.x + (ctx->notes[i].rect.w - destRect.w) / 2;
+            destRect.y = ctx->notes[i].rect.y + ctx->notes[i].rect.h - destRect.h - 20;
 
-            SDL_RenderCopy(ctx->renderer, ctx->notes[whiteIndex[i]].text, NULL, &destRect);
+            SDL_RenderCopy(ctx->renderer, ctx->notes[i].text, NULL, &destRect);
         }
     }
 }
 
-void draw_black(AppContext* ctx)
+void draw_black(GuiContext* ctx)
 {
-    int blackIndex[] = {1, 3, 6, 8, 10};
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < NUM_NOTES; i++)
     {
-        if (ctx->notes[blackIndex[i]].isVisualPressed)
+        if (!ctx->notes[i].isBlack) continue;
+
+        if (ctx->notes[i].isVisualPressed)
         {
             SDL_SetRenderDrawColor(ctx->renderer, RED_COLOR);
         } else
         {
             SDL_SetRenderDrawColor(ctx->renderer, BLACK_COLOR);
         }
-        SDL_RenderFillRect(ctx->renderer, &ctx->notes[blackIndex[i]].rect);
+        SDL_RenderFillRect(ctx->renderer, &ctx->notes[i].rect);
         SDL_SetRenderDrawColor(ctx->renderer, BLACK_COLOR);
-        SDL_RenderDrawRect(ctx->renderer, &ctx->notes[blackIndex[i]].rect);
+        SDL_RenderDrawRect(ctx->renderer, &ctx->notes[i].rect);
 
-        if (ctx->notes[blackIndex[i]].text != NULL) {
+        if (ctx->notes[i].text != NULL) {
             SDL_Rect destRect;
-            destRect.w = ctx->notes[blackIndex[i]].lableWidth;
-            destRect.h = ctx->notes[blackIndex[i]].lableHeight;
+            destRect.w = ctx->notes[i].lableWidth;
+            destRect.h = ctx->notes[i].lableHeight;
 
-            destRect.x = ctx->notes[blackIndex[i]].rect.x + (ctx->notes[blackIndex[i]].rect.w - destRect.w) / 2;
-            destRect.y = ctx->notes[blackIndex[i]].rect.y + ctx->notes[blackIndex[i]].rect.h - destRect.h - 20;
+            destRect.x = ctx->notes[i].rect.x + (ctx->notes[i].rect.w - destRect.w) / 2;
+            destRect.y = ctx->notes[i].rect.y + ctx->notes[i].rect.h - destRect.h - 20;
 
-            SDL_RenderCopy(ctx->renderer, ctx->notes[blackIndex[i]].text, NULL, &destRect);
+            SDL_RenderCopy(ctx->renderer, ctx->notes[i].text, NULL, &destRect);
         }
     }
 }
@@ -149,7 +211,7 @@ const char* get_waveform_name(WaveformType type) {
     }
 }
 
-void draw_status_text(AppContext* ctx)
+void draw_status_text(GuiContext* ctx, SharedState* state)
 {
     static SDL_Texture* statusTexture = NULL;
     static int lastOctave = -999;
@@ -157,19 +219,19 @@ void draw_status_text(AppContext* ctx)
     static int w, h;
 
     // Only recreate texture if something changed
-    if (ctx->octaveOffset != lastOctave || ctx->waveform != lastWaveform) {
+    if (state->octaveOffset != lastOctave || state->waveform != lastWaveform) {
         if (statusTexture) {
             SDL_DestroyTexture(statusTexture);
         }
 
         char buffer[64];
-        snprintf(buffer, sizeof(buffer), "Octave: %d | Wave: %s", ctx->octaveOffset, get_waveform_name(ctx->waveform));
+        snprintf(buffer, sizeof(buffer), "Octave: %d | Wave: %s", state->octaveOffset, get_waveform_name(state->waveform));
 
         statusTexture = create_text_texture(ctx->renderer, globalFont, buffer);
         SDL_QueryTexture(statusTexture, NULL, NULL, &w, &h);
 
-        lastOctave = ctx->octaveOffset;
-        lastWaveform = ctx->waveform;
+        lastOctave = state->octaveOffset;
+        lastWaveform = state->waveform;
     }
 
     if (statusTexture) {
@@ -178,17 +240,17 @@ void draw_status_text(AppContext* ctx)
     }
 }
 
-void render_frame(AppContext* ctx)
+void render_frame(GuiContext* ctx, SharedState* state)
 {
     SDL_SetRenderDrawColor(ctx->renderer, 30, 30, 30, 255);
     SDL_RenderClear(ctx->renderer);
     draw_white(ctx);
     draw_black(ctx);
-    draw_status_text(ctx);
+    draw_status_text(ctx, state);
     SDL_RenderPresent(ctx->renderer);
 }
 
-void destroy_gui(AppContext* ctx)
+void destroy_gui(GuiContext* ctx)
 {
     destroy_notes(ctx);
     if (globalFont) TTF_CloseFont(globalFont);

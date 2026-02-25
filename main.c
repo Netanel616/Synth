@@ -4,31 +4,33 @@
 #include "input.h"
 #include "audio.h"
 #include "setup.h"
+
 bool init(AppContext* ctx)
 {
     setup_init(ctx);
-    if (!init_gui(ctx)|| !init_audio(ctx))
-    //if (!init_gui(ctx))
+    if (!init_gui(&ctx->gui, &ctx->state) || !init_audio(&ctx->audio, &ctx->state))
     {
         return false;
     }
     return true;
 }
+
 void cleanup(AppContext* ctx)
 {
-    //destroy_audio(ctx);
-    destroy_gui(ctx);
+    destroy_audio(&ctx->audio);
+    destroy_gui(&ctx->gui);
     setup_destroy(ctx);
 }
+
 int main(void)
 {
     AppContext ctx = {0};
     if (!init(&ctx)) return 1;
 
-    while (ctx.running)
+    while (ctx.state.running)
     {
         handle_input(&ctx);
-        render_frame(&ctx);
+        render_frame(&ctx.gui, &ctx.state);
         SDL_Delay(16);
     }
 
