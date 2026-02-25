@@ -30,6 +30,13 @@ typedef enum {
     RELEASE
 } EnvelopeState;
 
+typedef enum {
+    WAVE_SINE,
+    WAVE_SAW,
+    WAVE_SQUARE,
+    WAVE_TRIANGLE
+} WaveformType;
+
 typedef struct {
     float frequency;
     float amplitude;
@@ -61,6 +68,7 @@ typedef struct {
 
     int octaveOffset;   // 0, 1, -1, ...
     float masterVolume; // 0.0 to 1.0
+    WaveformType waveform; // Current selected waveform
 
 } AppContext;
 

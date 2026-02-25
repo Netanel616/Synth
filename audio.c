@@ -18,6 +18,36 @@ void init_sine_table() {
 #define ATTACK_RATE 0.001f
 #define RELEASE_RATE 0.0005f
 
+// Helper function to generate sample based on waveform type
+float get_sample(WaveformType type, double phase) {
+    // Normalize phase to 0.0 - 1.0 range for non-sine waves
+    double normalized_phase = phase / (double)SINE_TABLE_SIZE;
+
+    switch (type) {
+        case WAVE_SINE:
+            return sine_lookup_table[(int)phase % SINE_TABLE_SIZE];
+
+        case WAVE_SAW:
+            // Sawtooth: linearly decreases from 1.0 to -1.0
+            return (float)(1.0 - 2.0 * normalized_phase);
+
+        case WAVE_SQUARE:
+            // Square: 1.0 for first half, -1.0 for second half
+            return (normalized_phase < 0.5) ? 1.0f : -1.0f;
+
+        case WAVE_TRIANGLE:
+            // Triangle: linear ramp up and down
+            if (normalized_phase < 0.5) {
+                return (float)(-1.0 + 4.0 * normalized_phase);
+            } else {
+                return (float)(3.0 - 4.0 * normalized_phase);
+            }
+
+        default:
+            return 0.0f;
+    }
+}
+
 void audio_callback(void* userdata, Uint8* stream, int len) {
     AppContext* ctx = (AppContext*)userdata;
     float* f_stream = (float*)stream;
@@ -51,9 +81,8 @@ void audio_callback(void* userdata, Uint8* stream, int len) {
                 }
             }
 
-            // Mixing
-            int index = (int)ctx->voices[v].phase;
-            float sample = sine_lookup_table[index % SINE_TABLE_SIZE];
+            // Get sample from the selected waveform
+            float sample = get_sample(ctx->waveform, ctx->voices[v].phase);
 
             // 0.15f is the Master Gain to prevent clipping
             f_stream[i] += sample * ctx->voices[v].amplitude * 0.15f;

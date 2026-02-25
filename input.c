@@ -20,6 +20,12 @@ void handle_input(AppContext* ctx)
             if (code == SDL_SCANCODE_UP) { ctx->octaveOffset++; continue; }
             if (code == SDL_SCANCODE_DOWN) { ctx->octaveOffset--; continue; }
 
+            // Waveform control
+            if (code == SDL_SCANCODE_1) { ctx->waveform = WAVE_SINE; printf("Waveform: Sine\n"); continue; }
+            if (code == SDL_SCANCODE_2) { ctx->waveform = WAVE_SAW; printf("Waveform: Sawtooth\n"); continue; }
+            if (code == SDL_SCANCODE_3) { ctx->waveform = WAVE_SQUARE; printf("Waveform: Square\n"); continue; }
+            if (code == SDL_SCANCODE_4) { ctx->waveform = WAVE_TRIANGLE; printf("Waveform: Triangle\n"); continue; }
+
             for (int i = 0; i < NUM_NOTES; i++) {
                 if (code == ctx->notes[i].key) {
                     ctx->notes[i].isVisualPressed = true;

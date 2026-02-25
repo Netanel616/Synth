@@ -2,13 +2,15 @@
 // Created by Netanel Seri on 24/02/2026.
 //
 #include "common.h"
+#include <stdio.h>
 
 #define WHITE_COLOR 255, 255, 255, 255
 #define RED_COLOR 255, 0, 0, 255
 #define BLACK_COLOR 0, 0, 0, 255
 #define BLUE_COLOR 0, 0, 255, 255
 
-static SDL_Texture* octaveText;
+// Global font variable to avoid opening/closing every frame
+static TTF_Font* globalFont = NULL;
 
 // Creates a texture from a font and message
 SDL_Texture* create_text_texture(SDL_Renderer* renderer, TTF_Font* font, const char* message) {
@@ -34,20 +36,24 @@ SDL_Texture* create_text_texture(SDL_Renderer* renderer, TTF_Font* font, const c
 
 bool setup_notes(AppContext* ctx, SDL_Renderer* renderer)
 {
-    TTF_Font* font = TTF_OpenFont(FONT_PATH, FONT_SIZE);
-    if (!font) { return false; }
+    if (!globalFont) {
+        globalFont = TTF_OpenFont(FONT_PATH, FONT_SIZE);
+        if (!globalFont) {
+            printf("Font Error: %s\n", TTF_GetError());
+            return false;
+        }
+    }
 
     for (int i = 0; i < NUM_NOTES; i++) {
         // Load text and position relative to rectangle
         if (!ctx->notes[i].text)
         {
-            SDL_Texture* text = create_text_texture(renderer, font, ctx->notes[i].name);
+            SDL_Texture* text = create_text_texture(renderer, globalFont, ctx->notes[i].name);
             ctx->notes[i].text = text;
             // Center text inside key rectangle
             SDL_QueryTexture(text, NULL, NULL, &ctx->notes[i].lableWidth, &ctx->notes[i].lableHeight);
         }
     }
-    TTF_CloseFont(font);
     return true;
 }
 
@@ -133,22 +139,43 @@ void draw_black(AppContext* ctx)
     }
 }
 
-void draw_octave_shift(AppContext* ctx)
+const char* get_waveform_name(WaveformType type) {
+    switch (type) {
+        case WAVE_SINE: return "Sine";
+        case WAVE_SAW: return "Sawtooth";
+        case WAVE_SQUARE: return "Square";
+        case WAVE_TRIANGLE: return "Triangle";
+        default: return "Unknown";
+    }
+}
+
+void draw_status_text(AppContext* ctx)
 {
-    static SDL_Rect destRect;
-    static int init;
-    if (!init)
-    {
-        init = 1;
-        char* str = "Octave";
-        TTF_Font* font = TTF_OpenFont(FONT_PATH, FONT_SIZE);
-        if (!font) return;
-        octaveText = create_text_texture(ctx->renderer, font, str);
-        SDL_QueryTexture(octaveText, NULL, NULL, &destRect.w, &destRect.h);
-        TTF_CloseFont(font);
+    static SDL_Texture* statusTexture = NULL;
+    static int lastOctave = -999;
+    static WaveformType lastWaveform = -1;
+    static int w, h;
+
+    // Only recreate texture if something changed
+    if (ctx->octaveOffset != lastOctave || ctx->waveform != lastWaveform) {
+        if (statusTexture) {
+            SDL_DestroyTexture(statusTexture);
+        }
+
+        char buffer[64];
+        snprintf(buffer, sizeof(buffer), "Octave: %d | Wave: %s", ctx->octaveOffset, get_waveform_name(ctx->waveform));
+
+        statusTexture = create_text_texture(ctx->renderer, globalFont, buffer);
+        SDL_QueryTexture(statusTexture, NULL, NULL, &w, &h);
+
+        lastOctave = ctx->octaveOffset;
+        lastWaveform = ctx->waveform;
     }
 
-    SDL_RenderCopy(ctx->renderer, octaveText, NULL, &destRect);
+    if (statusTexture) {
+        SDL_Rect destRect = {20, 20, w, h}; // Top-left corner
+        SDL_RenderCopy(ctx->renderer, statusTexture, NULL, &destRect);
+    }
 }
 
 void render_frame(AppContext* ctx)
@@ -157,14 +184,14 @@ void render_frame(AppContext* ctx)
     SDL_RenderClear(ctx->renderer);
     draw_white(ctx);
     draw_black(ctx);
-    draw_octave_shift(ctx);
+    draw_status_text(ctx);
     SDL_RenderPresent(ctx->renderer);
 }
 
 void destroy_gui(AppContext* ctx)
 {
     destroy_notes(ctx);
-    SDL_DestroyTexture(octaveText);
+    if (globalFont) TTF_CloseFont(globalFont);
     SDL_DestroyRenderer(ctx->renderer);
     SDL_DestroyWindow(ctx->window);
     TTF_Quit();
