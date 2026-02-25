@@ -1,7 +1,8 @@
 //
-// Created by נתנאל סרי on 24/02/2026.
+// Created by Netanel Seri on 24/02/2026.
 //
 #include "common.h"
+
 #define WHITE_COLOR 255, 255, 255, 255
 #define RED_COLOR 255, 0, 0, 255
 #define BLACK_COLOR 0, 0, 0, 255
@@ -9,23 +10,23 @@
 
 static SDL_Texture* octaveText;
 
-// הפונקציה מקבלת פונט שכבר נטען לזיכרון
+// Creates a texture from a font and message
 SDL_Texture* create_text_texture(SDL_Renderer* renderer, TTF_Font* font, const char* message) {
     if (!font || !message) return NULL;
 
     SDL_Color blue = {BLUE_COLOR};
 
-    // 1. יצירת Surface (בעזרת Blended למראה איכותי יותר מ-Solid)
+    // 1. Create Surface (using Blended for better quality than Solid)
     SDL_Surface* surface = TTF_RenderText_Blended(font, message, blue);
     if (!surface) {
         printf("Surface Error: %s\n", TTF_GetError());
         return NULL;
     }
 
-    // 2. המרה לטקסטורה (VRAM)
+    // 2. Convert to Texture (VRAM)
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
 
-    // 3. ניקוי ה-Surface (כבר אין בו צורך אחרי שהעלינו לכרטיס המסך)
+    // 3. Free Surface (no longer needed after upload to GPU)
     SDL_FreeSurface(surface);
 
     return texture;
@@ -34,14 +35,15 @@ SDL_Texture* create_text_texture(SDL_Renderer* renderer, TTF_Font* font, const c
 bool setup_notes(AppContext* ctx, SDL_Renderer* renderer)
 {
     TTF_Font* font = TTF_OpenFont(FONT_PATH, FONT_SIZE);
-    if (!font) {return false;}
+    if (!font) { return false; }
+
     for (int i = 0; i < NUM_NOTES; i++) {
-        // 2. טעינת הטקסט ומיקומו ביחס למלבן
+        // Load text and position relative to rectangle
         if (!ctx->notes[i].text)
         {
-            SDL_Texture* text =create_text_texture(renderer, font, ctx->notes[i].name);
+            SDL_Texture* text = create_text_texture(renderer, font, ctx->notes[i].name);
             ctx->notes[i].text = text;
-            // מרכז את הטקסט בתוך המלבן של הקליד
+            // Center text inside key rectangle
             SDL_QueryTexture(text, NULL, NULL, &ctx->notes[i].lableWidth, &ctx->notes[i].lableHeight);
         }
     }
@@ -57,10 +59,9 @@ void destroy_notes(AppContext* ctx)
     }
 }
 
-
 bool init_gui(AppContext* ctx)
 {
-    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0 || TTF_Init() == -1) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0 || TTF_Init() == -1) {
         printf("Initialization Error: %s\n", SDL_GetError());
         return false;
     }
@@ -76,8 +77,8 @@ bool init_gui(AppContext* ctx)
 
 void draw_white(AppContext* ctx)
 {
-    int whiteIndex[] = {0,2,4,5,7,9,11};
-    for (int i = 0;i<7; i++)
+    int whiteIndex[] = {0, 2, 4, 5, 7, 9, 11};
+    for (int i = 0; i < 7; i++)
     {
         if (ctx->notes[whiteIndex[i]].isVisualPressed)
         {
@@ -102,10 +103,11 @@ void draw_white(AppContext* ctx)
         }
     }
 }
+
 void draw_black(AppContext* ctx)
 {
-    int blackIndex[] = {1,3,6,8,10};
-    for (int i = 0;i<5; i++)
+    int blackIndex[] = {1, 3, 6, 8, 10};
+    for (int i = 0; i < 5; i++)
     {
         if (ctx->notes[blackIndex[i]].isVisualPressed)
         {
@@ -130,9 +132,9 @@ void draw_black(AppContext* ctx)
         }
     }
 }
+
 void draw_octave_shift(AppContext* ctx)
 {
-
     static SDL_Rect destRect;
     static int init;
     if (!init)
@@ -147,7 +149,6 @@ void draw_octave_shift(AppContext* ctx)
     }
 
     SDL_RenderCopy(ctx->renderer, octaveText, NULL, &destRect);
-
 }
 
 void render_frame(AppContext* ctx)
@@ -159,8 +160,6 @@ void render_frame(AppContext* ctx)
     draw_octave_shift(ctx);
     SDL_RenderPresent(ctx->renderer);
 }
-
-
 
 void destroy_gui(AppContext* ctx)
 {

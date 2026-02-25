@@ -8,17 +8,25 @@
 
 #define NUM_NOTES 12
 #define NUM_VOICES 10
-#define BASE_FREQUENCY 44100
+
+// Audio Settings
+#define SAMPLE_RATE 44100
 #define BUFFER_SIZE 2048
-#define BASE_NOTE 60
+
+// Musical Standards
+#define A4_FREQUENCY 440.0f
+#define A4_MIDI_NUMBER 69
+#define BASE_NOTE 60 // C4
+
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 #define FONT_SIZE 24
 #define FONT_PATH "/System/Library/Fonts/Supplemental/Arial.ttf"
+
 typedef enum {
     OFF,
     ATTACK,
-    SUSTAIN, // כרגע נשתמש בזה כשהמקש לחוץ
+    SUSTAIN, // Currently used when key is pressed
     RELEASE
 } EnvelopeState;
 
@@ -36,7 +44,7 @@ typedef struct {
     const char* name;
     SDL_Scancode key;
     SDL_Rect rect;
-    bool isVisualPressed;// רק לצורך הציור ב-GUI
+    bool isVisualPressed; // Only for GUI rendering
     SDL_Texture* text;
     int lableWidth, lableHeight;
 } Note;
@@ -51,7 +59,7 @@ typedef struct {
     Note notes[NUM_NOTES];
     Voice voices[NUM_VOICES];
 
-    int octaveOffset;   //0, 1, -1, ...
+    int octaveOffset;   // 0, 1, -1, ...
     float masterVolume; // 0.0 to 1.0
 
 } AppContext;
