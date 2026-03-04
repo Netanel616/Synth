@@ -7,6 +7,7 @@ set(SDL2_PATH "/opt/homebrew/opt/sdl2")
 set(SDL2_TTF_PATH "/opt/homebrew/opt/sdl2_ttf")
 set(SDL2_MIXER_PATH "/opt/homebrew/opt/sdl2_mixer")
 
+# Main Application
 add_executable(Synth1 main.c
         common.h
         input.h
@@ -17,18 +18,39 @@ add_executable(Synth1 main.c
         setup.c
         gui.c
         audio.c
+        effects.c
+        effects.h
 )
-# איפה לחפש קבצי .h
+
 target_include_directories(Synth1 PRIVATE
         ${SDL2_PATH}/include/SDL2
         ${SDL2_TTF_PATH}/include/SDL2
         ${SDL2_MIXER_PATH}/include/SDL2
 )
 
-# איפה לחפש את קבצי הספריה (.dylib ב-Mac)
 target_link_libraries(Synth1 PRIVATE
         "${SDL2_PATH}/lib/libSDL2.dylib"
         "${SDL2_TTF_PATH}/lib/libSDL2_ttf.dylib"
-        #"${SDL2_MIXER_PATH}/lib/libSDL2_mixer.dylib"
-        "-framework Cocoa" # נדרש ב-Mac
+        "-framework Cocoa"
 )
+
+# Unit Tests
+option(BUILD_TESTS "Build unit tests" ON)
+
+if(BUILD_TESTS)
+    add_executable(run_tests tests/test_effects.c)
+
+    # Tests need access to project headers
+    target_include_directories(run_tests PRIVATE
+            ${CMAKE_SOURCE_DIR}
+            ${SDL2_PATH}/include/SDL2
+            ${SDL2_TTF_PATH}/include/SDL2
+    )
+
+    # Tests need to link against SDL because common.h uses SDL types
+    target_link_libraries(run_tests PRIVATE
+            "${SDL2_PATH}/lib/libSDL2.dylib"
+            "${SDL2_TTF_PATH}/lib/libSDL2_ttf.dylib"
+            "-framework Cocoa"
+    )
+endif()

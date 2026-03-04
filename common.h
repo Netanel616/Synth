@@ -12,6 +12,7 @@
 // Audio Settings
 #define SAMPLE_RATE 44100
 #define BUFFER_SIZE 2048
+#define MAX_DELAY_SECONDS 2.0f
 
 // Musical Standards
 #define A4_FREQUENCY 440.0f
@@ -37,14 +38,59 @@ typedef enum {
     WAVE_TRIANGLE
 } WaveformType;
 
+typedef enum {
+    FX_DISTORTION,
+    FX_FILTER,
+    FX_DELAY,
+    FX_COUNT // Helper to know how many effects there are
+} EffectType;
+
 // --- Data Structures ---
+
+// Oscillator Definition
+typedef struct {
+    WaveformType type;
+    float volume;       // 0.0 to 1.0
+    int octaveOffset;   // -2, -1, 0, 1, 2...
+    float detune;       // Fine tuning (0.9 to 1.1 approx)
+    bool enabled;
+} Oscillator;
+
+// Master Effects
+typedef struct {
+    // Distortion
+    bool distEnabled;
+    float distAmount;   // 0.0 to 1.0
+
+    // Filter (Low Pass)
+    bool filterEnabled;
+    float filterCutoff; // 0.0 to 1.0 (Frequency)
+    float filterResonance; // 0.0 to 0.95
+
+    // Delay (BPM Synced)
+    bool delayEnabled;
+    int delayNoteDiv;   // 1=Whole, 2=Half, 4=Quarter, 8=Eighth
+    float delayFeedback;// 0.0 to 0.9
+    float delayMix;     // 0.0 to 1.0
+} MasterEffects;
 
 // 1. Shared State (Logic & Settings)
 typedef struct {
-    int octaveOffset;       // 0, 1, -1, ...
-    float masterVolume;     // 0.0 to 1.0
-    WaveformType waveform;  // Current selected waveform
+    // Global Settings
+    int octaveOffset;       // Keyboard octave shift
+    float masterVolume;     // Master gain
+    float bpm;              // Beats Per Minute
     bool running;
+
+    // Modular Oscillator Engine
+    Oscillator* oscillators;    // Dynamic array of oscillators
+    int numOscillators;         // Current count
+    int oscCapacity;            // Current allocated capacity
+    int selectedOscIndex;       // Currently selected oscillator for editing
+
+    // Effects
+    MasterEffects effects;
+    EffectType selectedEffect; // For UI editing
 } SharedState;
 
 // 2. Audio Context (Sound Engine)
@@ -54,14 +100,27 @@ typedef struct {
     int midiNote;
     bool isActive;
     SDL_Scancode ownerKey;
-    double phase;
+
+    // Per-oscillator phase tracking
+    double* phases;
+    int phasesCapacity;
+
     EnvelopeState state;
 } Voice;
 
 typedef struct {
+    // Filter State (Stereo)
+    float lpfLow[2];  // Left/Right
+    float lpfBand[2]; // Left/Right
+
     SDL_AudioDeviceID deviceId;
     Voice voices[NUM_VOICES];
-    SharedState* state; // Pointer to shared state (for waveform/volume access in callback)
+    SharedState* state;
+
+    // Delay Buffer
+    float* delayBuffer;
+    int delayBufferIndex;
+    int delayBufferSize;
 } AudioContext;
 
 // 3. GUI Context (Visuals)
