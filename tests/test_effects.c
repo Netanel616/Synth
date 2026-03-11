@@ -5,10 +5,12 @@
 #define ACUTEST_IMPLEMENTATION_
 #include "acutest.h"
 
-#include "../common.h"
+// Now we include from the include path
+#include <common.h>
 
 // We include the C file directly to test static functions
-#include "../effects.c"
+// It is now located in ../src/effects.c
+#include "../src/effects.c"
 
 void test_distortion(void) {
     TEST_CHECK(apply_distortion(0.0f, 0.5f) == 0.0f);
@@ -25,7 +27,7 @@ void test_distortion(void) {
 }
 
 void test_filter(void) {
-    AppContext ctx;
+    AppContext ctx = {0};
     // Initialize the state pointer which is usually done in init_audio
     ctx.audio.state = &ctx.state;
 
@@ -61,7 +63,7 @@ void test_filter(void) {
 }
 
 void test_delay(void) {
-    AppContext ctx;
+    AppContext ctx = {0};
     // Initialize the state pointer which is usually done in init_audio
     ctx.audio.state = &ctx.state;
 
@@ -83,8 +85,11 @@ void test_delay(void) {
     int writeIndex = ctx.audio.delayBufferIndex - 2;
     if (writeIndex < 0) writeIndex += ctx.audio.delayBufferSize;
 
-    TEST_CHECK(ctx.audio.delayBuffer[writeIndex] == 1.0f);
-    TEST_CHECK(ctx.audio.delayBuffer[writeIndex+1] == -1.0f);
+    TEST_CHECK(ctx.audio.delayBuffer != NULL);
+    if(ctx.audio.delayBuffer) {
+        TEST_CHECK(ctx.audio.delayBuffer[writeIndex] == 1.0f);
+        TEST_CHECK(ctx.audio.delayBuffer[writeIndex+1] == -1.0f);
+    }
 
     ctx.audio.delayBufferIndex = (writeIndex + expectedOffset) % ctx.audio.delayBufferSize;
 
@@ -100,8 +105,8 @@ void test_delay(void) {
 }
 
 TEST_LIST = {
-    { test_distortion ,"distortion" },
-    { test_filter,"filter" },
-    { test_delay, "delay"  },
+    { "distortion", test_distortion },
+    { "filter", test_filter },
+    { "delay", test_delay },
     { NULL, NULL }
 };

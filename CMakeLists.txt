@@ -7,19 +7,17 @@ set(SDL2_PATH "/opt/homebrew/opt/sdl2")
 set(SDL2_TTF_PATH "/opt/homebrew/opt/sdl2_ttf")
 set(SDL2_MIXER_PATH "/opt/homebrew/opt/sdl2_mixer")
 
+# Add the 'include' directory to the include path
+include_directories(include)
+
 # Main Application
-add_executable(Synth1 main.c
-        common.h
-        input.h
-        gui.h
-        audio.h
-        input.c
-        setup.h
-        setup.c
-        gui.c
-        audio.c
-        effects.c
-        effects.h
+add_executable(Synth1
+        src/main.c
+        src/input.c
+        src/setup.c
+        src/gui.c
+        src/audio.c
+        src/effects.c
 )
 
 target_include_directories(Synth1 PRIVATE
@@ -42,7 +40,7 @@ if(BUILD_TESTS)
 
     # Tests need access to project headers
     target_include_directories(run_tests PRIVATE
-            ${CMAKE_SOURCE_DIR}
+            ${CMAKE_SOURCE_DIR}/include
             ${SDL2_PATH}/include/SDL2
             ${SDL2_TTF_PATH}/include/SDL2
     )
